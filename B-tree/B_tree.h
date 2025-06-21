@@ -1,4 +1,6 @@
 #pragma once
+#include <fstream>
+using namespace std;
 const int T = 3;
 const int MAX_KEYS = 2 * T - 1;
 const int MAX_CHILDREN = 2 * T;
@@ -9,9 +11,9 @@ public:
     int numKeys;
     int keys[MAX_KEYS];
     int values[MAX_KEYS];      
-    long children[MAX_KEYS + 1];
+    long children[MAX_CHILDREN];
     long selfOffset;
-    BTreeNode(bool isLeaf) {
+    BTreeNode(bool isLeaf = false) {
         leaf = isLeaf;
         numKeys = 0;
         selfOffset = -1;
@@ -25,5 +27,16 @@ public:
 };
 class B_tree
 {
+    BTreeNode root;
+    int size = 0;
+    void BtreeCreate() {
+        root = BTreeNode(true);
+        disk_write(root);
+    }
+    void disk_write(BTreeNode node);
+public:
+    B_tree() {
+        BtreeCreate();
+    }
 };
 
