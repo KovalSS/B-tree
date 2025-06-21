@@ -363,4 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /data/*
-!data/.gitkeep
+!/data/.gitkeep
