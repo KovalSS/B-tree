@@ -362,5 +362,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-B-tree/storage/
+B-tree/storage/*
 !storage/.gitkeep
