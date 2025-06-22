@@ -1,5 +1,6 @@
 #pragma once
 #include <fstream>
+#include <iostream>
 using namespace std;
 const int T = 3;
 const int MAX_KEYS = 2 * T - 1;
@@ -27,16 +28,24 @@ public:
 };
 class B_tree
 {
-    BTreeNode root;
+    long rootOffset = -1;      
+    long freeListHead = -1;
     int size = 0;
     void BtreeCreate() {
-        root = BTreeNode(true);
-        disk_write(root);
+        BTreeNode newRoot(true);
+        rootOffset = allocateNode(newRoot);
     }
-    void disk_write(BTreeNode node);
+    long allocateNode(BTreeNode& node);
+    void disk_write(BTreeNode& node);
+    BTreeNode disk_read(long offset);
+    int search(int key, const BTreeNode& node);
 public:
     B_tree() {
         BtreeCreate();
+    }
+    int search(int key) {
+        BTreeNode root = disk_read(rootOffset);
+        return search(key, root);
     }
 };
 

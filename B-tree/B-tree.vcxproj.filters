@@ -21,9 +21,15 @@
     <ClCompile Include="B_tree.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="BtreeSimple.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="B_tree.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="BtreeSimple.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

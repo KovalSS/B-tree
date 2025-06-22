@@ -128,9 +128,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="B-tree.cpp" />
+    <ClCompile Include="BtreeSimple.cpp" />
     <ClCompile Include="B_tree.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BtreeSimple.h" />
     <ClInclude Include="B_tree.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
