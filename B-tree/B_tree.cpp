@@ -219,6 +219,12 @@ void B_tree::insert_nonfull(int key, int value, BTreeNode& node)
     }
 }
 
+int B_tree::erase(int key)
+{
+    BTreeNode root = disk_read(rootOffset);
+    return erase(key, root);
+}
+
 void B_tree::insert(int key, int value)
 {
     if (search(key) != -1) {
@@ -297,6 +303,7 @@ B_tree::B_tree() {
         save_metadata();  
     }
 }
+
 void B_tree::save_metadata() {
     ofstream file("data/meta.dat", ios::binary);
     if (!file.is_open()) {
@@ -330,4 +337,202 @@ void B_tree::load_metadata() {
         << ", freeListHead = " << freeListHead
         << ", size = " << size << endl;
 #endif
+}
+
+int B_tree::erase(int key, BTreeNode node) {
+    int i = 0;
+    while (i < node.numKeys && key > node.keys[i])
+        i++;
+
+    if (i < node.numKeys && key == node.keys[i]) {
+        int value = node.values[i];
+        if (node.leaf) {
+            for (int j = i; j < node.numKeys - 1; ++j) {
+                node.keys[j] = node.keys[j + 1];
+                node.values[j] = node.values[j + 1];
+            }
+            node.numKeys--;
+            size--;
+            disk_write(node);
+#ifdef MESSAGE
+            cout << "Deleted key " << key << " from leaf node.\n";
+#endif
+            return value;
+        }
+        else {
+            BTreeNode pred = disk_read(node.children[i]);
+            if (pred.numKeys >= T) {
+                while (!pred.leaf)
+                    pred = disk_read(pred.children[pred.numKeys]);
+                node.keys[i] = pred.keys[pred.numKeys - 1];
+                node.values[i] = pred.values[pred.numKeys - 1];
+                disk_write(node);
+                return erase(node.keys[i], disk_read(node.children[i]));
+        }
+
+            BTreeNode succ = disk_read(node.children[i + 1]);
+            if (succ.numKeys >= T) {
+                while (!succ.leaf)
+                    succ = disk_read(succ.children[0]);
+                node.keys[i] = succ.keys[0];
+                node.values[i] = succ.values[0];
+                disk_write(node);
+                return erase(node.keys[i], disk_read(node.children[i + 1]));
+            }
+
+            BTreeNode left = disk_read(node.children[i]);
+            BTreeNode right = disk_read(node.children[i + 1]);
+
+            left.keys[left.numKeys] = node.keys[i];
+            left.values[left.numKeys] = node.values[i];
+            for (int j = 0; j < right.numKeys; ++j) {
+                left.keys[left.numKeys + 1 + j] = right.keys[j];
+                left.values[left.numKeys + 1 + j] = right.values[j];
+            }
+            if (!left.leaf) {
+                for (int j = 0; j <= right.numKeys; ++j)
+                    left.children[left.numKeys + 1 + j] = right.children[j];
+            }
+
+            left.numKeys += right.numKeys + 1;
+            deleteNode(right);
+
+            for (int j = i + 1; j < node.numKeys; ++j) {
+                node.keys[j - 1] = node.keys[j];
+                node.values[j - 1] = node.values[j];
+                node.children[j] = node.children[j + 1];
+            }
+            node.numKeys--;
+
+            disk_write(left);
+            disk_write(node);
+            return erase(key, left);
+    }
+}
+    else {
+        if (node.leaf)
+            return -1;
+
+        BTreeNode child = disk_read(node.children[i]);
+
+        if (child.numKeys < T) {
+            BTreeNode sibling;
+            bool merged = false;
+
+            if (i > 0) {
+                sibling = disk_read(node.children[i - 1]);
+                if (sibling.numKeys >= T) {
+                    for (int j = child.numKeys; j > 0; --j) {
+                        child.keys[j] = child.keys[j - 1];
+                        child.values[j] = child.values[j - 1];
+                    }
+                    if (!child.leaf) {
+                        for (int j = child.numKeys + 1; j > 0; --j)
+                            child.children[j] = child.children[j - 1];
+                    }
+
+                    child.keys[0] = node.keys[i - 1];
+                    child.values[0] = node.values[i - 1];
+                    if (!child.leaf)
+                        child.children[0] = sibling.children[sibling.numKeys];
+
+                    node.keys[i - 1] = sibling.keys[sibling.numKeys - 1];
+                    node.values[i - 1] = sibling.values[sibling.numKeys - 1];
+                    sibling.numKeys--;
+                    child.numKeys++;
+
+                    disk_write(sibling);
+                    disk_write(child);
+                }
+                else {
+                    sibling = disk_read(node.children[i - 1]);
+                    sibling.keys[sibling.numKeys] = node.keys[i - 1];
+                    sibling.values[sibling.numKeys] = node.values[i - 1];
+                    for (int j = 0; j < child.numKeys; ++j) {
+                        sibling.keys[sibling.numKeys + 1 + j] = child.keys[j];
+                        sibling.values[sibling.numKeys + 1 + j] = child.values[j];
+                    }
+                    if (!child.leaf) {
+                        for (int j = 0; j <= child.numKeys; ++j)
+                            sibling.children[sibling.numKeys + 1 + j] = child.children[j];
+                    }
+
+                    sibling.numKeys += child.numKeys + 1;
+                    deleteNode(child);
+
+                    for (int j = i; j < node.numKeys; ++j) {
+                        node.keys[j - 1] = node.keys[j];
+                        node.values[j - 1] = node.values[j];
+                        node.children[j] = node.children[j + 1];
+                    }
+                    node.numKeys--;
+                    disk_write(sibling);
+                    disk_write(node);
+                    child = sibling;
+                    i--; 
+                }
+            }
+            else if (i < node.numKeys) {
+                sibling = disk_read(node.children[i + 1]);
+                if (sibling.numKeys >= T) {
+                    child.keys[child.numKeys] = node.keys[i];
+                    child.values[child.numKeys] = node.values[i];
+                    if (!child.leaf)
+                        child.children[child.numKeys + 1] = sibling.children[0];
+
+                    node.keys[i] = sibling.keys[0];
+                    node.values[i] = sibling.values[0];
+                    for (int j = 1; j < sibling.numKeys; ++j) {
+                        sibling.keys[j - 1] = sibling.keys[j];
+                        sibling.values[j - 1] = sibling.values[j];
+                    }
+                    if (!sibling.leaf) {
+                        for (int j = 1; j <= sibling.numKeys; ++j)
+                            sibling.children[j - 1] = sibling.children[j];
+                    }
+
+                    sibling.numKeys--;
+                    child.numKeys++;
+
+                    disk_write(sibling);
+                    disk_write(child);
+                }
+                else {
+                    child.keys[child.numKeys] = node.keys[i];
+                    child.values[child.numKeys] = node.values[i];
+                    for (int j = 0; j < sibling.numKeys; ++j) {
+                        child.keys[child.numKeys + 1 + j] = sibling.keys[j];
+                        child.values[child.numKeys + 1 + j] = sibling.values[j];
+                    }
+                    if (!child.leaf) {
+                        for (int j = 0; j <= sibling.numKeys; ++j)
+                            child.children[child.numKeys + 1 + j] = sibling.children[j];
+                    }
+
+                    child.numKeys += sibling.numKeys + 1;
+                    deleteNode(sibling);
+
+                    for (int j = i + 1; j < node.numKeys; ++j) {
+                        node.keys[j - 1] = node.keys[j];
+                        node.values[j - 1] = node.values[j];
+                        node.children[j] = node.children[j + 1];
+                    }
+                    node.numKeys--;
+                    disk_write(child);
+                    disk_write(node);
+                }
+            }
+        }
+
+        return erase(key, child);
+    }
+}
+
+
+void B_tree::deleteNode(BTreeNode& node)
+{
+    node.numKeys = 0;
+    node.children[0] = freeListHead;
+    freeListHead = node.selfOffset;
+    disk_write(node);
 }

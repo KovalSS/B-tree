@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 #define FIX
-//#define MESSAGE
+#define MESSAGE
 using namespace std;
 const int T = 3;
 const int MAX_KEYS = 2 * T - 1;
@@ -47,14 +47,15 @@ class B_tree
     void print_node(const BTreeNode& node, int depth);
     void save_metadata();
     void load_metadata();
-
+    int erase(int key, BTreeNode node);
+    void deleteNode(BTreeNode& node);
 public:
     B_tree();
     int search(int key) {
         BTreeNode root = disk_read(rootOffset);
         return search(key, root);
     }
-    int pop(int key);
+    int erase(int key);
     void insert(int key, int value);
     int getSize() {
         return size;
