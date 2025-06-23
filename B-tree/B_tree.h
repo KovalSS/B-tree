@@ -1,6 +1,8 @@
 #pragma once
 #include <fstream>
 #include <iostream>
+#define FIX
+//#define MESSAGE
 using namespace std;
 const int T = 3;
 const int MAX_KEYS = 2 * T - 1;
@@ -40,14 +42,28 @@ class B_tree
     BTreeNode disk_read(long offset);
     int search(int key, const BTreeNode& node);
     void split_child(BTreeNode& x, int i);
+    void insert_nonfull(int key, int value, BTreeNode& node);
+    void traverse_node(const BTreeNode& node); 
+    void print_node(const BTreeNode& node, int depth);
+    void save_metadata();
+    void load_metadata();
+
 public:
-    B_tree() {
-        BtreeCreate();
-    }
+    B_tree();
     int search(int key) {
         BTreeNode root = disk_read(rootOffset);
         return search(key, root);
     }
     int pop(int key);
+    void insert(int key, int value);
+    int getSize() {
+        return size;
+    }
+    void traverse(); 
+    void print_tree();
+    ~B_tree() {
+        save_metadata();
+    }
+
 };
 
