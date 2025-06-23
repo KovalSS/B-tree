@@ -39,6 +39,7 @@ class B_tree
     void disk_write(BTreeNode& node);
     BTreeNode disk_read(long offset);
     int search(int key, const BTreeNode& node);
+    void split_child(BTreeNode& x, int i);
 public:
     B_tree() {
         BtreeCreate();
@@ -47,5 +48,6 @@ public:
         BTreeNode root = disk_read(rootOffset);
         return search(key, root);
     }
+    int pop(int key);
 };
 

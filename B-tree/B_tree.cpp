@@ -117,3 +117,46 @@ int B_tree::search(int key, const BTreeNode& node)
 
     return search(key, next_node);
 }
+
+void B_tree::split_child(BTreeNode& x, int i)
+{
+    BTreeNode y = disk_read(x.children[i]);
+    if (y.numKeys != MAX_KEYS) {
+        cerr << "Error: Cannot split non-full node.\n";
+        return;
+    }
+    BTreeNode z(y.leaf);
+    allocateNode(z);
+
+    z.numKeys = T - 1;
+
+    for (int j = 0; j < T - 1; ++j) {
+        z.keys[j] = y.keys[j + T];
+        z.values[j] = y.values[j + T];
+    }
+
+    if (!y.leaf) {
+        for (int j = 0; j < T; ++j)
+            z.children[j] = y.children[j + T];
+    }
+
+    y.numKeys = T - 1;
+
+    for (int j = x.numKeys; j >= i + 1; --j)
+        x.children[j + 1] = x.children[j];
+
+    x.children[i + 1] = z.selfOffset;
+
+    for (int j = x.numKeys - 1; j >= i; --j) {
+        x.keys[j + 1] = x.keys[j];
+        x.values[j + 1] = x.values[j];
+    }
+
+    x.keys[i] = y.keys[T - 1];
+    x.values[i] = y.values[T - 1];
+    x.numKeys++;
+
+    disk_write(x);
+    disk_write(y);
+    disk_write(z);
+}
