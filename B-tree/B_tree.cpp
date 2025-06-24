@@ -222,7 +222,19 @@ void B_tree::insert_nonfull(int key, int value, BTreeNode& node)
 int B_tree::erase(int key)
 {
     BTreeNode root = disk_read(rootOffset);
-    return erase(key, root);
+    int result = erase(key, root);
+
+    // Перевірка після видалення
+    if (root.numKeys == 0 && !root.leaf) {
+        // Корінь став порожнім і має одного нащадка
+        BTreeNode newRoot = disk_read(root.children[0]);
+        rootOffset = newRoot.selfOffset;
+        save_metadata();
+#ifdef MESSAGE
+        cout << "Root was empty. Promoted child at offset " << rootOffset << " as new root.\n";
+#endif
+    }
+    return result;
 }
 
 void B_tree::insert(int key, int value)
@@ -362,8 +374,6 @@ int B_tree::erase(int key, BTreeNode node) {
         else {
             BTreeNode pred = disk_read(node.children[i]);
             if (pred.numKeys >= T) {
-                while (!pred.leaf)
-                    pred = disk_read(pred.children[pred.numKeys]);
                 node.keys[i] = pred.keys[pred.numKeys - 1];
                 node.values[i] = pred.values[pred.numKeys - 1];
                 disk_write(node);
@@ -372,8 +382,6 @@ int B_tree::erase(int key, BTreeNode node) {
 
             BTreeNode succ = disk_read(node.children[i + 1]);
             if (succ.numKeys >= T) {
-                while (!succ.leaf)
-                    succ = disk_read(succ.children[0]);
                 node.keys[i] = succ.keys[0];
                 node.values[i] = succ.values[0];
                 disk_write(node);
@@ -388,7 +396,7 @@ int B_tree::erase(int key, BTreeNode node) {
             for (int j = 0; j < right.numKeys; ++j) {
                 left.keys[left.numKeys + 1 + j] = right.keys[j];
                 left.values[left.numKeys + 1 + j] = right.values[j];
-            }
+            } 
             if (!left.leaf) {
                 for (int j = 0; j <= right.numKeys; ++j)
                     left.children[left.numKeys + 1 + j] = right.children[j];
@@ -417,8 +425,6 @@ int B_tree::erase(int key, BTreeNode node) {
 
         if (child.numKeys < T) {
             BTreeNode sibling;
-            bool merged = false;
-
             if (i > 0) {
                 sibling = disk_read(node.children[i - 1]);
                 if (sibling.numKeys >= T) {
@@ -443,6 +449,7 @@ int B_tree::erase(int key, BTreeNode node) {
 
                     disk_write(sibling);
                     disk_write(child);
+                    disk_write(node);
                 }
                 else {
                     sibling = disk_read(node.children[i - 1]);
@@ -496,6 +503,7 @@ int B_tree::erase(int key, BTreeNode node) {
 
                     disk_write(sibling);
                     disk_write(child);
+                    disk_write(node);
                 }
                 else {
                     child.keys[child.numKeys] = node.keys[i];
